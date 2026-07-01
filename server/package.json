@@ -1,0 +1,32 @@
+{
+  "name": "@sonholab/issuer-provisioning-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mock issuer / Token Service Provider backend for wallet push provisioning (Apple Wallet & Google Pay)",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "dev": "node --experimental-strip-types --watch src/index.ts",
+    "start": "node --experimental-strip-types src/index.ts",
+    "smoke": "node --experimental-strip-types scripts/smoke.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "push-provisioning",
+    "apple-wallet",
+    "google-pay",
+    "tapandpay",
+    "passkit",
+    "tokenization",
+    "vdep",
+    "mdes"
+  ],
+  "author": "Leandro Perez <contacto@sonholab.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "typescript": "^5.6.2"
+  }
+}
