@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WalletPush · Push Provisioning Demo</title>
+<meta name="description" content="Interactive demo of push provisioning — adding a payment card to Apple Wallet and Google Pay directly from the issuer app." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #08080b;
+    --bg-grad: radial-gradient(1200px 600px at 70% -10%, #16131f 0%, #08080b 55%);
+    --panel: #101016;
+    --panel-2: #16161d;
+    --panel-3: #1c1c25;
+    --border: #26262f;
+    --border-soft: #1e1e26;
+    --text: #ECECF1;
+    --muted: #9797a4;
+    --muted-2: #6d6d79;
+    --gold: #E6B450;
+    --gold-soft: rgba(230,180,80,.14);
+    --violet: #9C8CFF;
+    --violet-soft: rgba(156,140,255,.14);
+    --green: #46D6A6;
+    --green-soft: rgba(70,214,166,.13);
+    --red: #FF6B6B;
+    --apple: #ffffff;
+    --google: #4285F4;
+    --shadow: 0 24px 60px -20px rgba(0,0,0,.7);
+    --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --display: 'Sora', var(--font);
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg-grad), var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 24px 64px; }
+
+  /* ── Top bar ─────────────────────────────────────────────── */
+  header.topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .brand .mark { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(150deg, #2a2437, #14121b); border: 1px solid var(--border); box-shadow: inset 0 1px 0 rgba(255,255,255,.05); }
+  .brand h1 { font-family: var(--display); font-size: 19px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+  .brand p { margin: 1px 0 0; font-size: 12.5px; color: var(--muted); }
+  .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .segmented { display: inline-flex; background: var(--panel); border: 1px solid var(--border); border-radius: 11px; padding: 4px; gap: 3px; }
+  .segmented button { border: 0; background: transparent; color: var(--muted); font-family: var(--font); font-size: 13px; font-weight: 600;
+    padding: 7px 13px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: color .2s, background .2s; }
+  .segmented button svg { width: 15px; height: 15px; }
+  .segmented button[aria-pressed="true"] { background: var(--panel-3); color: var(--text); box-shadow: inset 0 1px 0 rgba(255,255,255,.05); }
+  .segmented.mode button[aria-pressed="true"] { color: var(--gold); }
+
+  .btn-run { display: inline-flex; align-items: center; gap: 9px; border: 0; cursor: pointer; font-family: var(--font); font-weight: 600; font-size: 14px;
+    color: #1a1408; background: linear-gradient(180deg, #F2C669, #E1A12F); padding: 11px 20px; border-radius: 11px;
+    box-shadow: 0 8px 24px -8px rgba(230,180,80,.5), inset 0 1px 0 rgba(255,255,255,.4); transition: transform .15s, filter .2s, opacity .2s; }
+  .btn-run:hover { filter: brightness(1.05); }
+  .btn-run:active { transform: translateY(1px); }
+  .btn-run:disabled { opacity: .5; cursor: default; filter: grayscale(.3); }
+  .btn-run svg { width: 16px; height: 16px; }
+  .btn-ghost { background: var(--panel); border: 1px solid var(--border); color: var(--muted); padding: 11px 16px; border-radius: 11px; cursor: pointer;
+    font-family: var(--font); font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; transition: color .2s, border-color .2s; }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted-2); }
+  .btn-ghost svg { width: 15px; height: 15px; }
+
+  /* ── Live badge ─────────────────────────────────────────── */
+  .live-hint { font-size: 12px; color: var(--muted-2); display: flex; align-items: center; gap: 7px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-2); box-shadow: 0 0 0 0 rgba(70,214,166,.5); }
+  .dot.online { background: var(--green); animation: pulse 2s infinite; }
+  .dot.offline { background: var(--red); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(70,214,166,.45);} 70%{ box-shadow: 0 0 0 7px rgba(70,214,166,0);} 100%{ box-shadow: 0 0 0 0 rgba(70,214,166,0);} }
+
+  /* ── Layout grid ────────────────────────────────────────── */
+  .grid { display: grid; grid-template-columns: 360px 1fr; gap: 22px; align-items: start; }
+  @media (max-width: 940px) { .grid { grid-template-columns: 1fr; } .phone-col { justify-self: center; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--border-soft); border-radius: 18px; }
+  .panel-pad { padding: 20px; }
+  .panel-title { font-family: var(--display); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 14px; display: flex; align-items: center; gap: 9px; }
+  .panel-title svg { width: 15px; height: 15px; color: var(--gold); }
+
+  /* ── Phone mockup ───────────────────────────────────────── */
+  .phone-col { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 20px; }
+  .phone { width: 300px; height: 604px; border-radius: 44px; padding: 12px; margin: 0 auto;
+    background: linear-gradient(160deg, #26262e, #0c0c11); box-shadow: var(--shadow), inset 0 0 0 1px rgba(255,255,255,.04); position: relative; }
+  .phone-screen { position: relative; width: 100%; height: 100%; border-radius: 33px; overflow: hidden; background: linear-gradient(180deg, #0e0e14 0%, #0a0a0f 100%); }
+  .notch { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 108px; height: 26px; background: #050507; border-radius: 16px; z-index: 6; }
+  .app-ui { position: absolute; inset: 0; padding: 52px 20px 22px; display: flex; flex-direction: column; }
+  .app-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .app-head .name { font-family: var(--display); font-weight: 700; font-size: 15px; }
+  .app-head .avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(140deg,#3a3550,#211d2e); border: 1px solid var(--border); }
+  .balance-label { font-size: 11.5px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+  .balance { font-family: var(--display); font-size: 27px; font-weight: 700; letter-spacing: -.02em; margin: 3px 0 18px; }
+
+  /* payment card */
+  .pcard { position: relative; border-radius: 18px; padding: 17px; height: 176px; color: #fff; overflow: hidden; isolation: isolate;
+    background: linear-gradient(135deg, #3f2f6b 0%, #221a3d 46%, #14101f 100%); box-shadow: 0 14px 30px -14px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.08); }
+  .pcard::after { content:""; position:absolute; inset:0; background: radial-gradient(300px 120px at 85% -20%, rgba(230,180,80,.25), transparent 70%); z-index:-1; }
+  .pcard .brand-row { display: flex; align-items: center; justify-content: space-between; }
+  .pcard .issuer { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .02em; }
+  .pcard .chip { width: 34px; height: 26px; border-radius: 6px; margin-top: 26px;
+    background: linear-gradient(135deg, #E9Cf8f, #b9964f); box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); position: relative; }
+  .pcard .chip::before { content:""; position:absolute; inset:5px 7px; border:1px solid rgba(0,0,0,.25); border-radius:2px; }
+  .pcard .pan { font-family: var(--mono); font-size: 15px; letter-spacing: .06em; margin-top: 16px; }
+  .pcard .foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 12px; }
+  .pcard .foot small { display:block; font-size: 8.5px; color: rgba(255,255,255,.55); letter-spacing: .08em; text-transform: uppercase; }
+  .pcard .foot span { font-family: var(--mono); font-size: 12px; }
+  .netmark { height: 22px; }
+
+  .add-btn { margin-top: auto; width: 100%; border: 0; cursor: pointer; border-radius: 13px; padding: 13px; font-weight: 600; font-size: 14.5px;
+    display: flex; align-items: center; justify-content: center; gap: 9px; transition: opacity .2s, transform .1s; font-family: var(--font); }
+  .add-btn.apple { background: #fff; color: #000; }
+  .add-btn.google { background: #000; color: #fff; border: 1px solid #3c4043; }
+  .add-btn:active { transform: translateY(1px); }
+  .add-btn:disabled { opacity: .45; cursor: default; }
+  .add-btn svg { height: 19px; width: auto; }
+  .add-btn.provisioned { background: var(--green-soft); color: var(--green); border: 1px solid rgba(70,214,166,.3); }
+
+  /* wallet sheet */
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; transform: translateY(101%); transition: transform .5s cubic-bezier(.22,1,.36,1);
+    background: #0f0f15; border-top: 1px solid var(--border); border-radius: 26px 26px 33px 33px; padding: 20px 20px 26px; z-index: 5; box-shadow: 0 -20px 40px -20px rgba(0,0,0,.7); }
+  .phone.sheet-open .sheet { transform: translateY(0); }
+  .sheet .grip { width: 40px; height: 4px; border-radius: 3px; background: #34343f; margin: 0 auto 16px; }
+  .sheet .sheet-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .sheet .sheet-head .wlogo { width: 26px; height: 26px; }
+  .sheet .sheet-head b { font-family: var(--display); font-size: 15px; }
+  .sheet .mini-card { border-radius: 12px; height: 66px; padding: 11px 13px; display:flex; flex-direction: column; justify-content: space-between;
+    background: linear-gradient(135deg, #3f2f6b, #14101f); margin-bottom: 14px; }
+  .sheet .mini-card .r { display:flex; justify-content: space-between; align-items:center; font-size: 11px; color: rgba(255,255,255,.75); }
+  .sheet .mini-card .num { font-family: var(--mono); font-size: 13px; letter-spacing: .05em; }
+  .sheet .status-line { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); min-height: 22px; }
+  .spinner { width: 17px; height: 17px; border-radius: 50%; border: 2px solid rgba(255,255,255,.15); border-top-color: var(--gold); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .check-badge { width: 19px; height: 19px; border-radius: 50%; background: var(--green); display: grid; place-items: center; color: #04150f; }
+  .check-badge svg { width: 12px; height: 12px; }
+  .sheet .sheet-btn { margin-top: 16px; width: 100%; border: 0; border-radius: 12px; padding: 12px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: var(--font);
+    background: linear-gradient(180deg,#F2C669,#E1A12F); color:#1a1408; }
+
+  /* success overlay */
+  .success-glow { position: absolute; inset: 0; background: radial-gradient(300px 300px at 50% 42%, var(--green-soft), transparent 70%); opacity: 0; transition: opacity .5s; pointer-events: none; z-index: 4; }
+  .phone.done .success-glow { opacity: 1; }
+
+  /* ── Flow diagram ───────────────────────────────────────── */
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; position: relative; margin-bottom: 6px; }
+  .node { text-align: center; padding: 14px 8px 12px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--border-soft); transition: border-color .3s, background .3s, box-shadow .3s; position: relative; }
+  .node .ic { width: 34px; height: 34px; margin: 0 auto 8px; border-radius: 10px; display: grid; place-items: center; background: var(--panel-3); color: var(--muted); transition: color .3s, background .3s; }
+  .node .ic svg { width: 18px; height: 18px; }
+  .node .nm { font-size: 11.5px; font-weight: 600; color: var(--muted); letter-spacing: .01em; }
+  .node .sub { font-size: 10px; color: var(--muted-2); }
+  .node.active { border-color: var(--gold); background: var(--gold-soft); box-shadow: 0 0 0 1px var(--gold-soft), 0 8px 22px -12px rgba(230,180,80,.5); }
+  .node.active .ic { background: var(--gold); color: #1a1408; }
+  .node.active .nm { color: var(--text); }
+  .flow-track { height: 2px; background: var(--border); margin: 4px 12% 16px; border-radius: 2px; position: relative; overflow: hidden; }
+  .flow-track .fill { position: absolute; inset: 0; width: 0; background: linear-gradient(90deg, var(--gold), var(--violet)); transition: width .4s ease; }
+
+  /* ── Steps ─────────────────────────────────────────────── */
+  .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .step { display: flex; gap: 13px; padding: 11px 10px; border-radius: 11px; transition: background .25s; }
+  .step.active { background: var(--panel-2); }
+  .step .marker { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600;
+    background: var(--panel-3); color: var(--muted-2); border: 1px solid var(--border); transition: all .25s; }
+  .step.active .marker { border-color: var(--gold); color: var(--gold); }
+  .step.done .marker { background: var(--green); border-color: var(--green); color: #04150f; }
+  .step .marker svg { width: 12px; height: 12px; }
+  .step .body h4 { margin: 2px 0 2px; font-size: 13.5px; font-weight: 600; }
+  .step .body p { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .step .body .actor { font-family: var(--mono); font-size: 10.5px; color: var(--muted-2); letter-spacing: .02em; }
+  .step .body code { font-family: var(--mono); font-size: 11px; color: var(--violet); background: var(--violet-soft); padding: 1px 5px; border-radius: 5px; }
+
+  /* ── Payload inspector ─────────────────────────────────── */
+  .payloads { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .payloads { grid-template-columns: 1fr; } }
+  .pl-card { border: 1px solid var(--border-soft); border-radius: 15px; padding: 15px; background: var(--panel-2); }
+  .pl-card.wire { border-color: rgba(156,140,255,.22); }
+  .pl-card.secure { border-color: rgba(70,214,166,.22); }
+  .pl-head { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+  .pl-head .tag { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; }
+  .pl-card.wire .tag { background: var(--violet-soft); color: var(--violet); }
+  .pl-card.secure .tag { background: var(--green-soft); color: var(--green); }
+  .pl-head h5 { margin: 0; font-size: 13px; font-weight: 600; }
+  .kv { display: flex; flex-direction: column; gap: 9px; }
+  .kv .row { display: flex; flex-direction: column; gap: 3px; }
+  .kv .k { font-size: 10.5px; color: var(--muted-2); text-transform: uppercase; letter-spacing: .05em; }
+  .kv .v { font-family: var(--mono); font-size: 11.5px; color: var(--text); word-break: break-all; background: var(--panel); border: 1px solid var(--border-soft); border-radius: 7px; padding: 6px 8px; }
+  .kv .v.blob { color: var(--violet); max-height: 62px; overflow: hidden; position: relative; }
+  .kv .v.tok { color: var(--green); }
+  .empty-note { font-size: 12px; color: var(--muted-2); font-style: italic; }
+  .pan-guard { margin-top: 13px; display: flex; align-items: center; gap: 9px; font-size: 11.5px; color: var(--green); background: var(--green-soft); border-radius: 9px; padding: 9px 11px; }
+  .pan-guard svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  .footer-note { margin-top: 26px; font-size: 12px; color: var(--muted-2); text-align: center; line-height: 1.7; }
+  .footer-note b { color: var(--muted); }
+  .stack-row { display:flex; gap: 20px; margin-top: 18px; flex-wrap: wrap; }
+  @media (max-width: 940px){ .phone-col { position: static; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E6B450" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/><path d="M16 15h2"/>
+        </svg>
+      </div>
+      <div>
+        <h1>WalletPush</h1>
+        <p>Push Provisioning · Apple Wallet &amp; Google Pay</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="segmented platform" role="group" aria-label="Wallet platform">
+        <button id="tab-apple" aria-pressed="true" onclick="setPlatform('apple')">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.9c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.8-3-.8-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.5-.7 2.9-.7 1.3 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.4-.9-2.4-3.6zM14.2 5.9c.6-.8 1-1.8.9-2.9-.9 0-2 .6-2.6 1.3-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.1z"/></svg>
+          Apple Wallet
+        </button>
+        <button id="tab-google" aria-pressed="false" onclick="setPlatform('google')">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill="#4285F4" d="M22.5 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2-1.9 3.3-4.7 3.3-7.8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.3-2-6.2-4.6H2.2v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.8 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2.2a11 11 0 0 0 0 9.8l3.6-2.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3 .6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.2 7.1l3.6 2.8C6.7 7.3 9.1 5.4 12 5.4z"/></svg>
+          Google Pay
+        </button>
+      </div>
+
+      <div class="segmented mode" role="group" aria-label="Data mode">
+        <button id="mode-sim" aria-pressed="true" onclick="setMode('sim')">Simulated</button>
+        <button id="mode-live" aria-pressed="false" onclick="setMode('live')">Live API</button>
+      </div>
+
+      <button class="btn-ghost" onclick="resetFlow()" aria-label="Reset the demo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        Reset
+      </button>
+      <button id="runBtn" class="btn-run" onclick="runFlow()">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        Run provisioning
+      </button>
+    </div>
+  </header>
+
+  <div class="live-hint" style="margin:-14px 0 20px">
+    <span id="liveDot" class="dot"></span>
+    <span id="liveText">Simulated mode — runs fully offline. Switch to “Live API” to call the issuer server on localhost:8787.</span>
+  </div>
+
+  <div class="grid">
+    <!-- Phone -->
+    <div class="phone-col">
+      <div class="phone" id="phone">
+        <div class="phone-screen">
+          <div class="notch"></div>
+          <div class="success-glow"></div>
+
+          <div class="app-ui">
+            <div class="app-head">
+              <span class="name">SonhoLab</span>
+              <span class="avatar" aria-hidden="true"></span>
+            </div>
+            <span class="balance-label">Available balance</span>
+            <span class="balance">R$ 12,480.00</span>
+
+            <div class="pcard">
+              <div class="brand-row">
+                <span class="issuer">SonhoLab Debit</span>
+                <svg id="cardNet" class="netmark" viewBox="0 0 48 16" aria-label="Visa" xmlns="http://www.w3.org/2000/svg"><text x="0" y="13" font-family="Sora, sans-serif" font-weight="700" font-size="15" fill="#ffffff" letter-spacing="1">VISA</text></svg>
+              </div>
+              <div class="chip" aria-hidden="true"></div>
+              <div class="pan">•••• •••• •••• 4242</div>
+              <div class="foot">
+                <div><small>Card holder</small><span>Leandro Perez</span></div>
+                <div><small>Expires</small><span>11/29</span></div>
+              </div>
+            </div>
+
+            <button class="add-btn apple" id="addBtn" onclick="runFlow()">
+              <svg id="addIcon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.9c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.8-3-.8-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.5-.7 2.9-.7 1.3 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.4-.9-2.4-3.6zM14.2 5.9c.6-.8 1-1.8.9-2.9-.9 0-2 .6-2.6 1.3-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.1z"/></svg>
+              <span id="addLabel">Add to Apple Wallet</span>
+            </button>
+          </div>
+
+          <!-- Wallet provisioning sheet -->
+          <div class="sheet" id="sheet">
+            <div class="grip"></div>
+            <div class="sheet-head">
+              <span id="sheetLogo" class="wlogo"></span>
+              <b id="sheetTitle">Add Card</b>
+            </div>
+            <div class="mini-card">
+              <div class="r"><span>SonhoLab Debit</span><span id="sheetNet">VISA</span></div>
+              <div class="r"><span class="num">•••• 4242</span><span>Leandro Perez</span></div>
+            </div>
+            <div class="status-line" id="sheetStatus">
+              <span class="spinner"></span><span>Contacting your bank…</span>
+            </div>
+            <button class="sheet-btn" id="sheetBtn" style="display:none" onclick="dismissSheet()">Done</button>
+          </div>
+        </div>
+      </div>
+      <p style="text-align:center;font-size:12px;color:var(--muted-2);margin:0">Live device UI — the wallet sheet is presented by the OS, not the app.</p>
+    </div>
+
+    <!-- Right column -->
+    <div style="display:flex;flex-direction:column;gap:22px">
+
+      <div class="panel panel-pad">
+        <p class="panel-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+          Provisioning flow
+        </p>
+        <div class="flow" id="flow">
+          <div class="node" data-node="app">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg></div>
+            <div class="nm">Issuer App</div><div class="sub">on device</div>
+          </div>
+          <div class="node" data-node="issuer">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg></div>
+            <div class="nm">Issuer / TSP</div><div class="sub">backend</div>
+          </div>
+          <div class="node" data-node="network">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg></div>
+            <div class="nm">Card Network</div><div class="sub">VDEP / MDES</div>
+          </div>
+          <div class="node" data-node="wallet">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="13" rx="3"/><path d="M16 12h3"/><path d="M2 9h20"/></svg></div>
+            <div class="nm">Wallet</div><div class="sub">Secure Element</div>
+          </div>
+        </div>
+        <div class="flow-track"><div class="fill" id="flowFill"></div></div>
+        <ul class="steps" id="steps"></ul>
+      </div>
+
+      <div class="panel panel-pad">
+        <p class="panel-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          Payload inspector
+        </p>
+        <div class="payloads">
+          <div class="pl-card wire">
+            <div class="pl-head"><span class="tag">On the wire</span><h5 id="wireTitle">Encrypted payload</h5></div>
+            <div class="kv" id="wireKv"><p class="empty-note">Run the flow to generate the encrypted provisioning payload.</p></div>
+          </div>
+          <div class="pl-card secure">
+            <div class="pl-head"><span class="tag">Secure Element</span><h5>Decrypted token</h5></div>
+            <div class="kv" id="secureKv"><p class="empty-note">Decrypted only inside the device Secure Element (shown here as proof).</p></div>
+            <div class="pan-guard" id="panGuard" style="display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>The clear funding PAN <b>never</b> leaves the issuer — only a device token is provisioned.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footer-note">
+    <b>WalletPush</b> — reference implementation of card push provisioning for iOS (PassKit) &amp; Android (Google Pay TapAndPay).<br/>
+    Native SDK modules in <b>/ios</b> &amp; <b>/android</b> · issuer + TSP crypto in <b>/server</b> · sequence diagrams &amp; security model in <b>/docs</b>.
+  </p>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   WalletPush demo controller
+   Two modes:
+     • sim  — everything runs client-side with realistic static data (offline).
+     • live — calls the issuer server on http://localhost:8787.
+   Two platforms: apple (PassKit) | google (TapAndPay).
+   ───────────────────────────────────────────────────────────── */
+
+const API_BASE = 'http://localhost:8787';
+const TOKEN = 'demo-session-token';
+let platform = 'apple';
+let mode = 'sim';
+let running = false;
+
+const CARD = { id: 'card_demo_visa_4242', displayName: 'SonhoLab Debit', last4: '4242', network: 'visa' };
+
+const ICONS = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  apple: '<svg viewBox="0 0 24 24" fill="#fff"><path d="M16.4 12.9c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.8-3-.8-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.5-.7 2.9-.7 1.3 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.4-.9-2.4-3.6z"/></svg>',
+  google: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2-1.9 3.3-4.7 3.3-7.8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.3-2-6.2-4.6H2.2v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.8 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2.2a11 11 0 0 0 0 9.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3 .6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.2 7.1l3.6 2.8C6.7 7.3 9.1 5.4 12 5.4z"/></svg>'
+};
+
+/* Step scripts per platform. node = which flow node lights up. */
+const FLOWS = {
+  apple: [
+    { node:'issuer',  actor:'App → Issuer', t:'Check eligibility', d:'App asks the issuer whether the card can be added to Apple Wallet on this device.' },
+    { node:'wallet',  actor:'App → PassKit', t:'Present PKAddPaymentPassViewController', d:'Apple Wallet returns a certificate chain, a <code>nonce</code> and its signature.' },
+    { node:'issuer',  actor:'App → Issuer/TSP', t:'Request encrypted pass data', d:'App forwards the certificates + nonce to the issuer to build the payload.' },
+    { node:'network', actor:'Issuer → Network', t:'Tokenize funding PAN (VDEP/MDES)', d:'The network mints a device token (DPAN) + PAR for the funding account.' },
+    { node:'issuer',  actor:'Issuer (ECC_V2)', t:'ECDH · X9.63 KDF · AES-256-GCM', d:'Issuer encrypts the <code>token</code> to the wallet key → <code>encryptedPassData</code>.' },
+    { node:'wallet',  actor:'App → Wallet', t:'Add PKAddPaymentPassRequest', d:'Secure Element re-derives the key from the ephemeral public key and decrypts.' },
+    { node:'wallet',  actor:'Wallet', t:'Card provisioned & active', d:'The token is installed. The clear PAN never touched the device.' }
+  ],
+  google: [
+    { node:'issuer',  actor:'App → Issuer', t:'Check eligibility & isTokenized', d:'App confirms the card is provisionable and not already in this wallet.' },
+    { node:'wallet',  actor:'App ↔ TapAndPay', t:'Read stableHardwareId + activeWalletId', d:'Device + wallet identifiers are gathered for token binding.' },
+    { node:'issuer',  actor:'App → Issuer/TSP', t:'Request Opaque Payment Card (OPC)', d:'App asks the issuer/TSP to mint an <code>OPC</code> for this device.' },
+    { node:'network', actor:'Issuer → Network', t:'Tokenize funding PAN (VDEP/MDES)', d:'The network mints a device token (DPAN) + PAR for the funding account.' },
+    { node:'issuer',  actor:'Issuer', t:'Build & sign OPC', d:'AES-256-GCM content encryption + ECDSA signature → base64 <code>OPC</code>.' },
+    { node:'wallet',  actor:'App → TapAndPay', t:'pushTokenize(OPC)', d:'Google Pay presents the add-card sheet using the opaque blob.' },
+    { node:'wallet',  actor:'Google Pay', t:'Token provisioned & active', d:'The token is installed. The app never handled the clear PAN.' }
+  ]
+};
+
+/* Static, realistic data for simulated mode. */
+const SIM = {
+  apple: {
+    wire: [
+      ['encryptedPassData', 'Bvn2kQ8f4T1pXcM7aZ0rLd9E2wYhKqN5s3Vb6Ug1oJ4tI8mR7yA0eC2xF5nH3lP9qWZk', 'blob'],
+      ['ephemeralPublicKey', 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9Qh1n4rKq2pTfA7mX0bV3cLd8sYhN2wJ', 'blob'],
+      ['activationData', 'eyJub25jZSI6IkhrM3AiLCJpc3N1ZWRBdCI6IjIwMjYtMDEtMDEifQ==', 'blob']
+    ],
+    secure: [
+      ['tokenReferenceId', 'tkn_9f3a1c7e5b2d8046af11c930', 'tok'],
+      ['dpan (device token)', '•••• •••• •••• 4242', 'tok'],
+      ['par', 'PAR9F3A1C7E5B2D8046AF11C930AB', 'tok'],
+      ['expiry', '11 / 29', 'tok']
+    ]
+  },
+  google: {
+    wire: [
+      ['opc (Opaque Payment Card)', 'eyJlbnZlbG9wZSI6IkJ2bjJrUThmNFQxcFhjTTdhWjByTGQ5RTJ3WWhLcU41czNWYjZVZzFvSjR0SThtIiwic2lnbmF0dXJlIjoiTUVVQ0lRRHhKa2s5In0=', 'blob'],
+      ['tokenServiceProvider', 'TOKEN_PROVIDER_VISA', 'tok'],
+      ['network', 'NETWORK_VISA', 'tok']
+    ],
+    secure: [
+      ['tokenReferenceId', 'tkn_9f3a1c7e5b2d8046af11c930', 'tok'],
+      ['dpan (device token)', '•••• •••• •••• 4242', 'tok'],
+      ['par', 'PAR9F3A1C7E5B2D8046AF11C930AB', 'tok'],
+      ['walletAccountId', 'wa_7712bd0431', 'tok']
+    ]
+  }
+};
+
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise(r => setTimeout(r, prefersReduced() ? 0 : ms));
+const prefersReduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function setPlatform(p) {
+  if (running) return;
+  platform = p;
+  $('tab-apple').setAttribute('aria-pressed', String(p === 'apple'));
+  $('tab-google').setAttribute('aria-pressed', String(p === 'google'));
+  const isApple = p === 'apple';
+  $('sheetTitle').textContent = isApple ? 'Apple Wallet' : 'Google Pay';
+  $('sheetLogo').innerHTML = isApple ? ICONS.apple : ICONS.google;
+  resetFlow();
+}
+
+/* Rebuild the in-app "Add to Wallet" button from scratch so it is always consistent,
+   even after a completed run replaced its inner markup. */
+function renderAddButton(provisioned) {
+  const btn = $('addBtn');
+  if (provisioned) {
+    btn.className = 'add-btn provisioned';
+    btn.disabled = true;
+    btn.innerHTML = `${ICONS.check}<span>Added to Wallet</span>`;
+    return;
+  }
+  const isApple = platform === 'apple';
+  btn.className = 'add-btn ' + platform;
+  btn.disabled = false;
+  btn.innerHTML =
+    `<span style="display:inline-flex;height:19px">${isApple ? ICONS.apple : ICONS.google}</span>` +
+    `<span>${isApple ? 'Add to Apple Wallet' : 'Add to Google Pay'}</span>`;
+}
+
+function setMode(m) {
+  if (running) return;
+  mode = m;
+  $('mode-sim').setAttribute('aria-pressed', String(m === 'sim'));
+  $('mode-live').setAttribute('aria-pressed', String(m === 'live'));
+  if (m === 'live') probeLive();
+  else { $('liveDot').className = 'dot'; $('liveText').textContent = 'Simulated mode — runs fully offline. Switch to “Live API” to call the issuer server on localhost:8787.'; }
+}
+
+async function probeLive() {
+  $('liveText').textContent = 'Probing issuer server at localhost:8787…';
+  try {
+    const r = await fetch(`${API_BASE}/health`, { cache: 'no-store' });
+    const j = await r.json();
+    $('liveDot').className = 'dot online';
+    $('liveText').innerHTML = `Live API connected — <b>${j.service} v${j.version}</b>. Payloads below are produced by the real backend.`;
+  } catch {
+    $('liveDot').className = 'dot offline';
+    $('liveText').innerHTML = 'Live API unreachable — start it with <b>cd server &amp;&amp; npm start</b>, or use Simulated mode.';
+  }
+}
+
+function renderSteps() {
+  const steps = FLOWS[platform];
+  $('steps').innerHTML = steps.map((s, i) => `
+    <li class="step" data-i="${i}">
+      <span class="marker">${i + 1}</span>
+      <div class="body">
+        <span class="actor">${s.actor}</span>
+        <h4>${s.t}</h4>
+        <p>${s.d}</p>
+      </div>
+    </li>`).join('');
+}
+
+function resetFlow() {
+  running = false;
+  renderSteps();
+  $('flowFill').style.width = '0';
+  document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+  const phone = $('phone');
+  phone.classList.remove('sheet-open', 'done');
+  $('sheetBtn').style.display = 'none';
+  $('sheetStatus').innerHTML = '<span class="spinner"></span><span>Contacting your bank…</span>';
+  renderAddButton(false);
+  $('runBtn').disabled = false;
+  $('wireKv').innerHTML = '<p class="empty-note">Run the flow to generate the encrypted provisioning payload.</p>';
+  $('secureKv').innerHTML = '<p class="empty-note">Decrypted only inside the device Secure Element (shown here as proof).</p>';
+  $('panGuard').style.display = 'none';
+  $('wireTitle').textContent = platform === 'apple' ? 'Encrypted pass data' : 'Opaque Payment Card';
+}
+
+function lightNode(node) {
+  document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+  document.querySelector(`.node[data-node="${node}"]`)?.classList.add('active');
+}
+
+function renderKv(elId, rows) {
+  $(elId).innerHTML = rows.map(([k, v, cls]) =>
+    `<div class="row"><span class="k">${k}</span><span class="v ${cls === 'blob' ? 'blob' : cls === 'tok' ? 'tok' : ''}">${v}</span></div>`
+  ).join('');
+}
+
+async function fetchLivePayload() {
+  const headers = { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
+  if (platform === 'apple') {
+    const r = await fetch(`${API_BASE}/v1/provisioning/apple/roundtrip`, { method:'POST', headers, body: JSON.stringify({ cardId: CARD.id }) });
+    const j = await r.json();
+    const trunc = (s) => s.length > 66 ? s.slice(0, 66) : s;
+    return {
+      wire: [
+        ['encryptedPassData', trunc(j.encryptedPassData), 'blob'],
+        ['ephemeralPublicKey', trunc(j.ephemeralPublicKey), 'blob'],
+        ['activationData', trunc(j.activationData), 'blob']
+      ],
+      secure: [
+        ['tokenReferenceId', j.decryptedProof.tokenReferenceId, 'tok'],
+        ['dpan (device token)', '•••• •••• •••• ' + String(j.decryptedProof.dpan).slice(-4), 'tok'],
+        ['par', j.decryptedProof.par, 'tok'],
+        ['expiry', `${j.decryptedProof.expiryMonth} / ${j.decryptedProof.expiryYear}`, 'tok']
+      ]
+    };
+  } else {
+    const r = await fetch(`${API_BASE}/v1/provisioning/google/opc`, { method:'POST', headers, body: JSON.stringify({ cardId: CARD.id, deviceId:'web-demo', walletAccountId:'wa_web' }) });
+    const j = await r.json();
+    return {
+      wire: [
+        ['opc (Opaque Payment Card)', j.opc.slice(0, 96), 'blob'],
+        ['tokenServiceProvider', j.tokenServiceProvider, 'tok'],
+        ['network', j.network, 'tok']
+      ],
+      secure: [
+        ['reference', j.reference, 'tok'],
+        ['tokenReferenceId', j.tokenReferenceId, 'tok'],
+        ['displayName', j.displayName, 'tok'],
+        ['lastDigits', '•••• ' + j.lastDigits, 'tok']
+      ]
+    };
+  }
+}
+
+async function runFlow() {
+  if (running) return;
+  running = true;
+  resetFlowSoft();
+  $('runBtn').disabled = true;
+  $('addBtn').disabled = true;
+
+  const steps = FLOWS[platform];
+  let data = SIM[platform];
+  if (mode === 'live') {
+    try { data = await fetchLivePayload(); }
+    catch { $('liveDot').className = 'dot offline'; $('liveText').innerHTML = 'Live API unreachable — falling back to simulated data.'; data = SIM[platform]; }
+  }
+
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    const li = document.querySelector(`.step[data-i="${i}"]`);
+    document.querySelectorAll('.step').forEach(x => x.classList.remove('active'));
+    li.classList.add('active');
+    lightNode(s.node);
+    $('flowFill').style.width = `${((i + 1) / steps.length) * 100}%`;
+    li.scrollIntoView({ block: 'nearest', behavior: prefersReduced() ? 'auto' : 'smooth' });
+
+    // Present the wallet sheet at the OS hand-off step.
+    if ((platform === 'apple' && i === 1) || (platform === 'google' && i === 5)) {
+      $('phone').classList.add('sheet-open');
+    }
+    // Reveal the encrypted payload once the issuer has built it.
+    if ((platform === 'apple' && i === 4) || (platform === 'google' && i === 4)) {
+      renderKv('wireKv', data.wire);
+    }
+    // Reveal the decrypted proof at the Secure Element step.
+    if ((platform === 'apple' && i === 5) || (platform === 'google' && i === 5)) {
+      renderKv('secureKv', data.secure);
+      $('panGuard').style.display = 'flex';
+      $('sheetStatus').innerHTML = '<span class="spinner"></span><span>Encrypting & verifying token…</span>';
+    }
+
+    await sleep(i === 0 ? 650 : 900);
+    li.classList.remove('active');
+    li.classList.add('done');
+    li.querySelector('.marker').innerHTML = ICONS.check;
+  }
+
+  // Success
+  $('phone').classList.add('done');
+  $('sheetStatus').innerHTML = `<span class="check-badge">${ICONS.check}</span><span style="color:var(--green)">Card added to ${platform === 'apple' ? 'Apple Wallet' : 'Google Pay'}</span>`;
+  $('sheetBtn').style.display = 'block';
+  renderAddButton(true);
+  $('runBtn').disabled = false;
+  running = false;
+}
+
+function resetFlowSoft() {
+  $('flowFill').style.width = '0';
+  document.querySelectorAll('.step').forEach(x => { x.classList.remove('active', 'done'); });
+  renderSteps();
+  $('phone').classList.remove('sheet-open', 'done');
+  $('sheetBtn').style.display = 'none';
+  $('sheetStatus').innerHTML = '<span class="spinner"></span><span>Contacting your bank…</span>';
+  $('wireKv').innerHTML = '<p class="empty-note">Generating…</p>';
+  $('secureKv').innerHTML = '<p class="empty-note">Awaiting Secure Element…</p>';
+  $('panGuard').style.display = 'none';
+  $('wireTitle').textContent = platform === 'apple' ? 'Encrypted pass data' : 'Opaque Payment Card';
+}
+
+function dismissSheet() { $('phone').classList.remove('sheet-open'); }
+
+// init
+setPlatform('apple');
+renderSteps();
+</script>
+</body>
+</html>
