@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	    In-App Provisioning entitlement.
+
+	    This key is what unlocks PKAddPaymentPassViewController. Apple grants it
+	    ONLY to approved card issuers / their approved app developers, and only
+	    after network enablement (Visa VDEP / Mastercard MDES). See ../README.md
+	    ("Prerequisites") for the request process. Adding this key to a normal
+	    provisioning profile is not enough — the App ID must be entitled by Apple
+	    for it to take effect, otherwise `canAddPaymentPass()` returns false.
+
+	    Attach this file to your app target via
+	    Build Settings -> Code Signing Entitlements.
+	-->
+	<key>com.apple.developer.payment-pass-provisioning</key>
+	<true/>
+</dict>
+</plist>
