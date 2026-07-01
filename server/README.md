@@ -21,8 +21,9 @@ Verify the whole flow, including that the encrypted payload actually decrypts:
 ```bash
 npm run smoke
 #   ✅  apple encryptedPassData DECRYPTS to the network token
-#   ✅  clear funding PAN is NOT present in the payload proof
-#   ... 11 passed, 0 failed
+#   ✅  clear funding PAN is NOT present anywhere in the apple payload
+#   ✅  google OPC signature verifies against the TSP key
+#   ... all checks passed (0 failed)
 ```
 
 Optional type-check (needs `npm install` for the TypeScript compiler only):

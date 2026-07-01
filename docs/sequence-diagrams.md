@@ -1,3 +1,5 @@
+**English** · [Español](sequence-diagrams.es.md) · [Português](sequence-diagrams.pt.md)
+
 # Sequence diagrams
 
 Both wallets follow the same shape — **the app never sees the clear PAN**; it only shuttles

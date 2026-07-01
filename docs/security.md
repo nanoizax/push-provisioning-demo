@@ -1,3 +1,5 @@
+**English** · [Español](security.es.md) · [Português](security.pt.md)
+
 # Security model
 
 Push provisioning is a payments-grade flow. This document states the threat model, the

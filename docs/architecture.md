@@ -1,3 +1,5 @@
+**English** · [Español](architecture.es.md) · [Português](architecture.pt.md)
+
 # Architecture
 
 ## The actors

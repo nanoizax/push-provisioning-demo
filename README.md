@@ -1,3 +1,5 @@
+**English** · [Español](README.es.md) · [Português](README.pt.md)
+
 <div align="center">
 
 # WalletPush — Card Push Provisioning
@@ -45,7 +47,13 @@ Deep dives: [architecture](docs/architecture.md) · [sequence diagrams](docs/seq
 # just open the file in a browser
 open web-demo/index.html          # macOS
 start web-demo/index.html         # Windows
+
+# …or serve it over HTTP (zero dependencies) — see web-demo/README.md
+node web-demo/serve.mjs           # -> http://localhost:5510
 ```
+
+The demo UI is available in **English, Español and Português (Lisboa)** via the in-page
+language switcher.
 
 **Run the issuer backend + verify the cryptography (Node ≥ 22.6, zero dependencies):**
 
@@ -56,12 +64,12 @@ npm run smoke      # end-to-end test — proves the encrypted payload decrypts
 ```
 
 ```
-✅  apple payload has all three PassKit fields
+✅  blocked card cannot be provisioned (403)
 ✅  apple encryptedPassData DECRYPTS to the network token
-✅  clear funding PAN is NOT present in the payload proof
-✅  google returns an OPC + mastercard TSP
-✅  webhook advances state to active
-11 passed, 0 failed
+✅  clear funding PAN is NOT present anywhere in the apple payload
+✅  google OPC signature verifies against the TSP key
+✅  webhook advances lifecycle to active
+All checks passed (0 failed)
 ```
 
 Then flip the web demo to **“Live API”** to watch it drive the real backend.
