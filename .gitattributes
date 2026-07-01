@@ -1,0 +1,15 @@
+# Normalize all text files to LF in the repository.
+* text=auto eol=lf
+
+# Explicit source types kept as LF.
+*.ts    text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.json  text eol=lf
+*.swift text eol=lf
+*.kt    text eol=lf
+*.kts   text eol=lf
+*.html  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.xml   text eol=lf
