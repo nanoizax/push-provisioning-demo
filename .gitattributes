@@ -13,3 +13,10 @@
 *.md    text eol=lf
 *.yml   text eol=lf
 *.xml   text eol=lf
+
+# Binary artifacts must never be line-ending normalized.
+*.jar   binary
+
+# Gradle wrapper scripts have platform-specific line endings.
+gradlew      text eol=lf
+gradlew.bat  text eol=crlf
