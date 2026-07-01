@@ -26,7 +26,19 @@ createServer(async (req, res) => {
       return;
     }
     const body = await readFile(file);
-    res.writeHead(200, { "Content-Type": TYPES[extname(file)] ?? "application/octet-stream" });
+    res.writeHead(200, {
+      "Content-Type": TYPES[extname(file)] ?? "application/octet-stream",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Content-Security-Policy":
+        "default-src 'self'; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src https://fonts.gstatic.com; " +
+        "script-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data:; " +
+        "connect-src 'self' http://localhost:8787",
+    });
     res.end(body);
   } catch {
     res.writeHead(404).end("not found");
