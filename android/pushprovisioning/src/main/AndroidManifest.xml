@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Minimal library manifest.
+
+    A library module contributes no <application> of its own; the consuming app
+    supplies it. TapAndPay does NOT require any special permission to be declared
+    here — the sensitive capability (push provisioning) is gated by Google's
+    server-side allowlist keyed on your package name + signing SHA-256, not by an
+    Android runtime permission.
+
+    INTERNET permission is declared because this module talks to the issuer
+    backend over HTTP/HTTPS via Retrofit.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+</manifest>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Needed to reach the issuer backend. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        The demo uses cleartext HTTP to reach http://10.0.2.2:8787 (the host's
+        localhost) from the emulator. usesCleartextTraffic is enabled ONLY for
+        this local demo; a production issuer app must use HTTPS and a strict
+        network security config.
+    -->
+    <application
+        android:allowBackup="true"
+        android:label="SonhoLab Wallet Demo"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>
