@@ -13,8 +13,9 @@ plugins {
     // Kotlin 2.0 Compose compiler plugin — required because this module exposes
     // a @Composable button.
     id("org.jetbrains.kotlin.plugin.compose")
-    // kapt drives Moshi's codegen annotation processor (@JsonClass(generateAdapter = true)).
-    id("org.jetbrains.kotlin.kapt")
+    // KSP drives Moshi's codegen (@JsonClass(generateAdapter = true)) — the
+    // Kotlin 2.0 replacement for kapt.
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -69,7 +70,7 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
     implementation("com.squareup.moshi:moshi:1.15.1")
     // Codegen generates the JsonAdapters at compile time (no reflection at runtime).
-    kapt("com.squareup.moshi:moshi-kotlin-codegen:1.15.1")
+    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.1")
     // OkHttp logging interceptor for debugging the issuer round-trips.
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 

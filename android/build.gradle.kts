@@ -16,7 +16,7 @@ plugins {
     // configured through composeOptions.kotlinCompilerExtensionVersion.
     id("org.jetbrains.kotlin.android") version "2.0.21" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
-    // kapt is the annotation processor bridge for Moshi codegen; version-matched
-    // to the Kotlin plugin above.
-    id("org.jetbrains.kotlin.kapt") version "2.0.21" apply false
+    // KSP drives Moshi codegen (replaces kapt, which is legacy on Kotlin 2.0).
+    // The KSP version is pinned to the Kotlin plugin version above: <kotlin>-<ksp>.
+    id("com.google.devtools.ksp") version "2.0.21-1.0.28" apply false
 }

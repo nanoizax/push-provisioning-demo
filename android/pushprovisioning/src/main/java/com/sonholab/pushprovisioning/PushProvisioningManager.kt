@@ -88,10 +88,18 @@ class PushProvisioningManager(private val activity: Activity) {
 
     /**
      * The id of the Google Wallet account currently active on the device. The OPC
-     * is scoped to this wallet. If no wallet is active this may throw / return an
-     * empty value depending on OEM — callers should handle that gracefully.
+     * is scoped to this wallet.
+     *
+     * If no wallet is active this does NOT return an empty value: the underlying
+     * Task fails with an [com.google.android.gms.common.api.ApiException] whose
+     * `statusCode` is [TapAndPay.TAP_AND_PAY_NO_ACTIVE_WALLET]. Callers should
+     * catch that specific status code and handle it as a normal, expected state
+     * (e.g. prompt the user to set up Google Wallet) rather than treating it as a
+     * generic error.
      */
     suspend fun getActiveWalletId(): String =
+        // A NO_ACTIVE_WALLET ApiException here means "no wallet yet", not a failure;
+        // callers should branch on TapAndPay.TAP_AND_PAY_NO_ACTIVE_WALLET.
         client.activeWalletId.awaitTask()
 
     // -----------------------------------------------------------------------

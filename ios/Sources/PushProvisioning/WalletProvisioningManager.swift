@@ -66,9 +66,11 @@ public final class WalletProvisioningManager: NSObject {
     /// Completion invoked exactly once when the flow terminates.
     private var flowCompletion: ((ProvisioningResult) -> Void)?
 
-    /// Retains the presented controller so it (and this delegate) stay alive for
-    /// the duration of the sheet.
-    private var presentedController: PKAddPaymentPassViewController?
+    /// Reference to the presented controller, kept only so we can clear it on
+    /// finish. Declared `weak` to avoid a retain cycle: the controller strongly
+    /// holds this manager as its delegate, so the presenter (the SwiftUI wrapper /
+    /// caller that presents it) must own the controller's lifetime, not us.
+    private weak var presentedController: PKAddPaymentPassViewController?
 
     /// Guards against a double completion (PassKit can, in edge cases, message a
     /// delegate more than once during teardown).
@@ -144,6 +146,13 @@ public final class WalletProvisioningManager: NSObject {
         eligibility: EligibilityResponse,
         completion: @escaping (ProvisioningResult) -> Void
     ) -> PKAddPaymentPassViewController? {
+
+        // Re-entry guard: if a previous flow was started but never finished,
+        // terminate it as cancelled so its caller is always notified before we
+        // overwrite the per-flow state below (otherwise its completion is lost).
+        if flowCompletion != nil && !didFinish {
+            finish(.cancelled)
+        }
 
         // Reset per-flow state (this manager can drive multiple attempts).
         self.eligibility = eligibility

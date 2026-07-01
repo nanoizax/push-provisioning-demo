@@ -81,16 +81,19 @@ object IssuerApiClient {
     /**
      * @param baseUrl issuer base URL (must end with '/').
      * @param sessionToken bearer token; defaults to the demo session token.
-     * @param enableLogging pretty-print request/response bodies to Logcat. Keep
-     *        this OFF in production builds — payment payloads must not be logged.
+     * @param enableLogging pretty-print request/response bodies to Logcat. This is
+     *        opt-in and OFF by default: payment-provisioning payloads must never be
+     *        logged in production. Enable it only for local debugging.
      */
     fun create(
         baseUrl: String = DEFAULT_BASE_URL,
         sessionToken: String = DEFAULT_SESSION_TOKEN,
-        enableLogging: Boolean = true,
+        enableLogging: Boolean = false,
     ): IssuerApiService {
 
         val logging = HttpLoggingInterceptor().apply {
+            // Even when logging is enabled, never emit the bearer token.
+            redactHeader("Authorization")
             level = if (enableLogging) {
                 HttpLoggingInterceptor.Level.BODY
             } else {

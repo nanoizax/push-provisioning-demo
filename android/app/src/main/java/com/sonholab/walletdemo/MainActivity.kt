@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Job
 import com.sonholab.pushprovisioning.AddToGoogleWalletButton
 import com.sonholab.pushprovisioning.GoogleProvisioningRequest
 import com.sonholab.pushprovisioning.IssuerApiClient
@@ -63,6 +64,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var manager: PushProvisioningManager
     private lateinit var issuerApi: IssuerApiService
 
+    // Single in-flight job per concern, so overlapping DataChanged callbacks and
+    // user taps cancel-and-replace the previous work instead of racing on uiState.
+    private var refreshJob: Job? = null
+    private var provisioningJob: Job? = null
+
     // --- Compose UI state -----------------------------------------------------
     private var uiState by mutableStateOf(DemoUiState())
 
@@ -86,20 +92,34 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
 
         // Refresh eligibility whenever tokens change (e.g. user removes the card
-        // from Google Wallet -> button should re-enable).
+        // from Google Wallet -> button should re-enable). Registered only while
+        // the Activity is visible so callbacks don't arrive in the background.
         manager.registerDataChangedListener {
-            lifecycleScope.launch { refreshState() }
+            triggerRefresh()
         }
 
         // Kick off the initial eligibility + isTokenized checks.
-        lifecycleScope.launch { refreshState() }
+        triggerRefresh()
     }
 
-    override fun onDestroy() {
+    override fun onStop() {
         manager.unregisterDataChangedListener()
-        super.onDestroy()
+        super.onStop()
+    }
+
+    /**
+     * Launches [refreshState] as the single refresh job, cancelling any previous
+     * one first so overlapping DataChanged callbacks don't race on [uiState].
+     */
+    private fun triggerRefresh() {
+        refreshJob?.cancel()
+        refreshJob = lifecycleScope.launch { refreshState() }
     }
 
     /**
@@ -175,7 +195,9 @@ class MainActivity : ComponentActivity() {
      * via pushTokenize. The result comes back in [onActivityResult].
      */
     private fun onAddToWalletClicked() {
-        lifecycleScope.launch {
+        // Cancel-and-replace so a double tap can't launch two provisioning flows.
+        provisioningJob?.cancel()
+        provisioningJob = lifecycleScope.launch {
             uiState = uiState.copy(loading = true, message = "Requesting secure card data…")
             try {
                 // Device ids required to scope the OPC.
@@ -242,12 +264,15 @@ class MainActivity : ComponentActivity() {
 
         when (result) {
             is ProvisioningResult.Success -> {
+                // Don't hard-set an "added" flag: re-query the authoritative token
+                // state (isCardTokenized) so the UI reflects the real PENDING/ACTIVE
+                // status rather than assuming the token is already usable.
                 uiState = uiState.copy(
-                    canAdd = false,
-                    alreadyAdded = true,
                     message = "Added to Google Wallet" +
-                        (result.issuerTokenId?.let { " (token $it)" } ?: "") + ".",
+                        (result.issuerTokenId?.let { " (token $it)" } ?: "") +
+                        ". Refreshing status…",
                 )
+                triggerRefresh()
             }
 
             is ProvisioningResult.Cancelled -> {

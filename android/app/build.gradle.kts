@@ -25,6 +25,11 @@ android {
 
     buildTypes {
         release {
+            // Minification is intentionally disabled for this demo. The proguard
+            // files below (incl. the Moshi keep rules) are wired up so the release
+            // build is ready to shrink, but the keep rules are NOT exercised while
+            // isMinifyEnabled = false. Flip this to true to enable R8/ProGuard and
+            // activate those rules.
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
