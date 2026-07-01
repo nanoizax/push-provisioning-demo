@@ -1,0 +1,29 @@
+# ── Node / backend ───────────────────────────────
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.local
+
+# ── iOS / Swift ──────────────────────────────────
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+
+# ── Android / Gradle ─────────────────────────────
+android/.gradle/
+android/build/
+android/**/build/
+android/local.properties
+android/.idea/
+*.iml
+*.keystore
+*.jks
+
+# ── OS / editors ─────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
