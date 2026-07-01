@@ -10,6 +10,8 @@ import { createServer } from "node:http";
 import { buildRouter } from "./routes.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
+// Demo default is "*" so the offline browser demo works from any origin (incl. file://).
+// In production set CORS_ORIGIN to a concrete allowlisted origin.
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "*";
 
 const router = buildRouter();
@@ -18,8 +20,12 @@ const server = createServer((req, res) => {
   void router.handle(req, res, CORS_ORIGIN).catch((err) => {
     // Last-resort guard: the router already maps known errors; this only fires on a bug.
     if (!res.headersSent) {
+      process.stderr.write(`[fatal] ${String(err)}\n`);
       res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "unhandled", detail: String(err) }));
+      const body = process.env.DEBUG_ERRORS === "1"
+        ? { error: "unhandled", detail: String(err) }
+        : { error: "unhandled" };
+      res.end(JSON.stringify(body));
     }
   });
 });

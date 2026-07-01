@@ -99,8 +99,14 @@ export class Router {
       if (err instanceof HttpError) {
         writeJson(res, { status: err.status, body: { error: err.message } });
       } else {
-        const message = err instanceof Error ? err.message : "internal_error";
-        writeJson(res, { status: 500, body: { error: "internal_error", detail: message } });
+        // Log the real error server-side; never leak internals to the client unless
+        // DEBUG_ERRORS is explicitly enabled.
+        const message = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`[error] ${req.method} ${req.url}: ${message}\n`);
+        const body = process.env.DEBUG_ERRORS === "1"
+          ? { error: "internal_error", detail: message }
+          : { error: "internal_error" };
+        writeJson(res, { status: 500, body });
       }
     }
   }

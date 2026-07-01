@@ -68,6 +68,11 @@ export function provisionApple(args: {
   certificates: string[];
   nonce: string; // base64
 }): AppleResult {
+  // DEMO LIMITATION: a production issuer MUST (1) validate the full PassKit certificate
+  // chain up to Apple's trusted root and (2) verify the `nonceSignature` over the `nonce`
+  // before deriving any key — both are anti-replay / integrity controls. They are out of
+  // scope for this offline demo (we have no real Apple chain) and are intentionally not
+  // performed here. See docs/security.md ("What this demo implements vs. production").
   const leaf = args.certificates[0];
   if (!leaf) throw new HttpError(400, "certificates[0] (wallet leaf) is required");
 

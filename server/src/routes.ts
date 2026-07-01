@@ -32,9 +32,19 @@ function asString(obj: unknown, key: string, required = true): string {
 
 function asStringArray(obj: unknown, key: string): string[] {
   const val = (obj as Record<string, unknown> | undefined)?.[key];
-  if (Array.isArray(val) && val.every((v) => typeof v === "string")) return val as string[];
+  if (Array.isArray(val) && val.length > 0 && val.every((v) => typeof v === "string")) {
+    return val as string[];
+  }
   throw new HttpError(400, `missing_or_invalid_field:${key}`);
 }
+
+// Allowed provisioning lifecycle transitions (source state -> permitted next states).
+const TRANSITIONS: Record<ProvisioningState, ProvisioningState[]> = {
+  requested: ["provisioned", "failed"],
+  provisioned: ["active", "failed"],
+  active: [],
+  failed: [],
+};
 
 export function buildRouter(): Router {
   const router = new Router();
@@ -67,6 +77,9 @@ export function buildRouter(): Router {
     requireBearer(req);
     const card = getCard(params.cardId!);
     const platform = asString(body, "walletPlatform"); // "apple" | "google"
+    if (platform !== "apple" && platform !== "google") {
+      throw new HttpError(400, "missing_or_invalid_field:walletPlatform");
+    }
     asString(body, "deviceId");
 
     if (!card) {
@@ -99,7 +112,7 @@ export function buildRouter(): Router {
   // Apple push provisioning — production-shaped (expects PassKit certificate chain).
   router.post("/v1/provisioning/apple", ({ req, body }) => {
     requireBearer(req);
-    const card = requireCard(asString(body, "cardId"));
+    const card = requireProvisionableCard(asString(body, "cardId"));
     const result = provisionApple({
       card,
       deviceId: asString(body, "deviceId", false) || "apple-device",
@@ -120,7 +133,7 @@ export function buildRouter(): Router {
   // Apple demo round-trip — proves the crypto works without a real device/certificate.
   router.post("/v1/provisioning/apple/roundtrip", ({ req, body }) => {
     requireBearer(req);
-    const card = requireCard(asString(body, "cardId"));
+    const card = requireProvisionableCard(asString(body, "cardId"));
     const nonce = asString(body, "nonce", false) || Buffer.from("demo-nonce-000000").toString("base64");
     const result = provisionAppleRoundtrip({ card, deviceId: "apple-demo-device", nonce });
     return { status: 200, body: result };
@@ -129,7 +142,7 @@ export function buildRouter(): Router {
   // Google push provisioning — mint an Opaque Payment Card.
   router.post("/v1/provisioning/google/opc", ({ req, body }) => {
     requireBearer(req);
-    const card = requireCard(asString(body, "cardId"));
+    const card = requireProvisionableCard(asString(body, "cardId"));
     const result = provisionGoogle({
       card,
       deviceId: asString(body, "deviceId", false) || "android-device",
@@ -156,15 +169,20 @@ export function buildRouter(): Router {
   });
 
   // Simulate a network (VDEP/MDES) token-status webhook advancing the lifecycle.
+  // Only valid forward transitions are accepted (a token cannot jump requested -> active
+  // or be resurrected from failed), matching the real token lifecycle.
   router.post("/v1/webhooks/network", ({ req, body }) => {
     requireBearer(req);
     const reference = asString(body, "reference");
     const state = asString(body, "state") as ProvisioningState;
-    const allowed: ProvisioningState[] = ["requested", "provisioned", "active", "failed"];
-    if (!allowed.includes(state)) throw new HttpError(400, "invalid_state");
-    const record = advanceProvisioning(reference, state);
+    if (!TRANSITIONS[state]) throw new HttpError(400, "invalid_state");
+    const record = getProvisioning(reference);
     if (!record) throw new HttpError(404, "provisioning_not_found");
-    return { status: 200, body: { reference: record.reference, state: record.state } };
+    if (!TRANSITIONS[record.state].includes(state)) {
+      throw new HttpError(409, `invalid_transition:${record.state}->${state}`);
+    }
+    advanceProvisioning(reference, state);
+    return { status: 200, body: { reference: record.reference, state } };
   });
 
   return router;
@@ -173,5 +191,13 @@ export function buildRouter(): Router {
 function requireCard(cardId: string) {
   const card = getCard(cardId);
   if (!card) throw new HttpError(404, "card_not_found");
+  return card;
+}
+
+// Like requireCard, but also enforces eligibility server-side so the eligibility gate
+// cannot be bypassed by POSTing a blocked card id straight to a provisioning route.
+function requireProvisionableCard(cardId: string) {
+  const card = requireCard(cardId);
+  if (!card.provisioningEnabled) throw new HttpError(403, "card_not_eligible");
   return card;
 }
